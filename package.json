@@ -1,0 +1,12 @@
+{
+  "name": "macbook-audio-touch-interface",
+  "version": "1.0.0",
+  "description": "A program which will use the macbook pros microphone to emulate a touch surface",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "brain.js": "~1.0.3",
+    "pull-stream": "~3.6.1",
+    "read-audio": "~8.1.1"
+  }
+}
