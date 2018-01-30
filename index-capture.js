@@ -28,7 +28,7 @@ getSilence((error, silence) => {
     (error, files) => {
       async.series(
         files.filter(file => file === null).map((file, i) => {
-          return record.bind(null, silence, filesToCapture[i]);
+          return record.bind(null, silence * 2, filesToCapture[i]);
         }),
         () => {
           console.log('finished recording');

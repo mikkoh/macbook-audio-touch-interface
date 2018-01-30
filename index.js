@@ -24,6 +24,14 @@ const touchIsDownNet = new brain.NeuralNetwork({
     hiddenLayers: [4]
 });
 
+function getAverage(data) {
+    return data.reduce((sum, value) => {
+        return sum + value;
+    }, 0) / data.length;
+}
+
+console.log("Average silence: ", getAverage(silenceData));
+
 const trainingDataTouchPosition = 
     filesToTrainFrom.map((fileName, i) => {
         const contents = fs.readFileSync(fileName, 'utf8');
@@ -34,6 +42,8 @@ const trainingDataTouchPosition =
         });
     })
     .reduce((combinedArray, currentTrainingData) => {
+        console.log("Average: ", getAverage(currentTrainingData.map(data => data.input[0])));
+
         return combinedArray.concat(currentTrainingData);
     }, []);
 
@@ -107,7 +117,7 @@ function startPredicting() {
 
             if (resultIsDown[0] > 0.5) {
                 targetMouse[0] = screenSize.width * 0.5;
-                targetMouse[1] = screenSize.height * (1 - resultPosition[0]);
+                targetMouse[1] = screenSize.height * resultPosition[0];
             }
 
             mousePosition[0] += (targetMouse[0] - mousePosition[0]) * 0.01;
