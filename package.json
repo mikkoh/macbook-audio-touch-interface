@@ -7,8 +7,10 @@
   "dependencies": {
     "async": "~2.6.0",
     "brain.js": "~1.0.3",
+    "clear": "~0.0.1",
     "fs-extra": "~5.0.0",
     "pull-stream": "~3.6.1",
-    "read-audio": "~8.1.1"
+    "read-audio": "~8.1.1",
+    "robotjs": "~0.4.7"
   }
 }

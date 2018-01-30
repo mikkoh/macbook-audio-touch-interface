@@ -3,44 +3,74 @@ const fs = require('fs');
 const readAudio = require('read-audio');
 const pull = require('pull-stream');
 const getEnergy = require('./get-energy');
+const clear = require('clear');
+const robot = require('robotjs');
 
+const silenceData = JSON.parse(fs.readFileSync('data/silence.json'));
 const filesToTrainFrom = [
-    '0',
-    '1'
+    'data/0.json',
+    'data/1.json'
 ];
 
-const net = new brain.NeuralNetwork({
-    activation: 'relu',
+const screenSize = robot.getScreenSize();
+const mousePosition = [screenSize.width * 0.5, screenSize.height * 0.5];
+const targetMouse = mousePosition.slice();
+
+const touchPositionNet = new brain.NeuralNetwork({
+    hiddenLayers: [2]
+});
+
+const touchIsDownNet = new brain.NeuralNetwork({
     hiddenLayers: [4]
 });
 
-
-
-const trainingData = 
-    filesToTrainFrom.map((fileName) => {
-        const contents = fs.readFileSync(`${fileName}.json`);
+const trainingDataTouchPosition = 
+    filesToTrainFrom.map((fileName, i) => {
+        const contents = fs.readFileSync(fileName, 'utf8');
         const data = JSON.parse(contents);
-        const output = fileName.split('-').map(parseFloat);
 
         return data.map((energy) => {
-            return { input: [energy], output };
+            return { input: [energy], output: [i] };
         });
     })
     .reduce((combinedArray, currentTrainingData) => {
         return combinedArray.concat(currentTrainingData);
     }, []);
 
-net.train(
-    trainingData, 
+const trainingDataIsTouchDown = [].concat(
+    trainingDataTouchPosition.map((data) => {
+        return {
+            input: data.input,
+            output: [1]
+        };
+    }),
+    silenceData.map((energy) => {
+        return {
+            input: [energy],
+            output: [0]
+        }
+    })
+);
+
+touchPositionNet.train(
+    trainingDataTouchPosition, 
     {
         errorThresh: 0.005,
         iterations: 20000,
         logPeriod: 100,
-        learningRate: 0.3,
         log: true
     }
 );
 
+touchIsDownNet.train(
+    trainingDataIsTouchDown, 
+    {
+        errorThresh: 0.005,
+        iterations: 20000,
+        logPeriod: 100,
+        log: true
+    }
+);
 
 startPredicting();
 
@@ -55,21 +85,35 @@ function startPredicting() {
         pull.map(function (result) {
             return getEnergy(result.data);
         }),
-        pull.drain(function (value) {
-            const result = net.run([value]);
+        pull.drain(function (energy) {
+            const resultPosition = touchPositionNet.run([energy]);
+            const resultIsDown = touchIsDownNet.run([energy]);
             let name;
 
-            console.log(value, result);
+            console.log(energy, resultPosition);
 
-            if (result[0] < 0.25) {
-                name = 'left';
-            } else if (result[0] > 0.25 && result[0] < 0.75) {
+            if (resultPosition[0] < 0.25) {
+                name = 'top';
+            } else if (resultPosition[0] > 0.25 && resultPosition[0] < 0.75) {
                 name = 'center';
             } else {
-                name = 'right';
+                name = 'bottom';
             }
 
-            console.log(`${name} ${result[0]}`);
+            clear();
+            console.log(name);
+            console.log('position', resultPosition[0]);
+            console.log('is down', resultIsDown[0] > 0.5);
+
+            if (resultIsDown[0] > 0.5) {
+                targetMouse[0] = screenSize.width * 0.5;
+                targetMouse[1] = screenSize.height * (1 - resultPosition[0]);
+            }
+
+            mousePosition[0] += (targetMouse[0] - mousePosition[0]) * 0.01;
+            mousePosition[1] += (targetMouse[1] - mousePosition[1]) * 0.01;
+
+            robot.moveMouse(mousePosition[0], mousePosition[1]);
         })
     );
 }

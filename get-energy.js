@@ -2,7 +2,7 @@ module.exports = (data) => {
     // calculate root mean square
     let sum = 0;
 
-    data.forEach((value) => {
+    data.slice(0, 128).forEach((value) => {
         sum += value * value;
     });
 
