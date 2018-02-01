@@ -11,6 +11,11 @@ const filesToTrainFrom = [
     'data/0.json',
     'data/1.json'
 ];
+const dataFromFiles = filesToTrainFrom.map((fileName) => {
+    const contents = fs.readFileSync(fileName, 'utf8');
+
+    return JSON.parse(contents).sort();
+});
 
 const screenSize = robot.getScreenSize();
 const mousePosition = [screenSize.width * 0.5, screenSize.height * 0.5];
@@ -30,20 +35,39 @@ function getAverage(data) {
     }, 0) / data.length;
 }
 
+function getMedian(data, isDataSorted = true) {
+    if (isDataSorted) {
+        return data[Math.round(data.length * 0.5)];
+    } else {
+        return data.sort()[Math.round(data.length * 0.5)];
+    }
+}
+
 console.log("Average silence: ", getAverage(silenceData));
+console.log("Median silence: ", getMedian(silenceData));
+console.log("Average 0: ", getAverage(dataFromFiles[0]));
+console.log("Median 0: ", getMedian(dataFromFiles[0]));
+console.log("Average 1: ", getAverage(dataFromFiles[1]));
+console.log("Median 1: ", getMedian(dataFromFiles[1]));
+
 
 const trainingDataTouchPosition = 
-    filesToTrainFrom.map((fileName, i) => {
-        const contents = fs.readFileSync(fileName, 'utf8');
-        const data = JSON.parse(contents);
+    dataFromFiles
+    .map((data, i) => {
+        const aboveMedian = data.filter((energy) => {
+            return Math.abs(energy - getMedian(data)) < 0.005;
+        });
 
+        console.log('reduced', data.length, aboveMedian.length);
+
+        return aboveMedian;
+    })
+    .map((data, i) => {
         return data.map((energy) => {
             return { input: [energy], output: [i] };
         });
     })
     .reduce((combinedArray, currentTrainingData) => {
-        console.log("Average: ", getAverage(currentTrainingData.map(data => data.input[0])));
-
         return combinedArray.concat(currentTrainingData);
     }, []);
 
@@ -99,8 +123,6 @@ function startPredicting() {
             const resultPosition = touchPositionNet.run([energy]);
             const resultIsDown = touchIsDownNet.run([energy]);
             let name;
-
-            console.log(energy, resultPosition);
 
             if (resultPosition[0] < 0.25) {
                 name = 'top';
